@@ -123,6 +123,7 @@ model ConnectedAccount {
   providerConfig        ProviderConfig? @relation(fields: [providerConfigId], references: [id], onDelete: Cascade)
   storageAccount        StorageAccount?
   files                 File[]
+  fileChunks            FileChunk[]
   folders               Folder[]
   uploadSessions        UploadSession[]
   s3StorageConfig       S3StorageConfig?
@@ -183,6 +184,8 @@ model File {
   mimeType           String           @map("mime_type") @db.VarChar(191)
   sizeBytes          BigInt           @map("size_bytes")
   checksum           String?          @db.VarChar(191)
+  encrypted          Boolean          @default(false)
+  chunkCount         Int              @default(0) @map("chunk_count")
   status             String           @default("active") @db.VarChar(32)
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
@@ -192,6 +195,7 @@ model File {
   folder             Folder?          @relation(fields: [folderId], references: [id], onDelete: SetNull)
   shares             FileShare[]
   previewTokens      FilePreviewToken[]
+  chunks             FileChunk[]
 
   @@index([userId])
   @@index([userId, status, createdAt])
@@ -200,6 +204,27 @@ model File {
   @@index([folderId])
   @@index([providerFileId])
   @@map("files")
+}
+
+model FileChunk {
+  id                 String           @id @default(uuid()) @db.Char(36)
+  fileId             String           @map("file_id") @db.Char(36)
+  chunkIndex         Int              @map("chunk_index")
+  connectedAccountId String           @map("connected_account_id") @db.Char(36)
+  provider           String           @db.VarChar(32)
+  providerFileId     String           @map("provider_file_id") @db.VarChar(191)
+  plainBytes         BigInt           @map("plain_bytes")
+  cipherBytes        BigInt           @map("cipher_bytes")
+  iv                 String           @db.VarChar(64)
+  authTag            String           @map("auth_tag") @db.VarChar(64)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  file               File             @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  connectedAccount   ConnectedAccount @relation(fields: [connectedAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([fileId, chunkIndex])
+  @@index([fileId])
+  @@index([connectedAccountId])
+  @@map("file_chunks")
 }
 
 model FileShare {

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../../config/prisma.js'
 import { hashToken } from '../../utils/crypto.js'
-import { streamProviderFile } from '../files/stream-file.js'
+import { streamStoredFile } from '../files/stream-file.js'
 
 export const publicRouter = Router()
 
@@ -26,7 +26,7 @@ publicRouter.get('/files/:token', async (req, res, next) => {
 publicRouter.get('/files/:token/download', async (req, res, next) => {
   try {
     const file = await findSharedFile(String(req.params.token))
-    return streamProviderFile(file, req.headers.range, res, { disposition: 'attachment' })
+    return streamStoredFile(file, req.headers.range, res, { disposition: 'attachment' })
   } catch (error) {
     return next(error)
   }
@@ -35,7 +35,7 @@ publicRouter.get('/files/:token/download', async (req, res, next) => {
 publicRouter.get('/files/:token/preview', async (req, res, next) => {
   try {
     const file = await findSharedFile(String(req.params.token))
-    return streamProviderFile(file, req.headers.range, res, { disposition: 'inline' })
+    return streamStoredFile(file, req.headers.range, res, { disposition: 'inline' })
   } catch (error) {
     return next(error)
   }

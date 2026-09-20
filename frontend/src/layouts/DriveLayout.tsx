@@ -11,7 +11,6 @@ import {
   Settings,
   Share2,
   SlidersHorizontal,
-  Star,
   Sun,
   Trash2,
   X,
@@ -34,7 +33,6 @@ const menu = [
   { label: 'Objects', icon: Database, href: '/all-files', section: 'Storage' },
   { label: 'Shared with me', icon: Share2, href: '/shared', section: 'Storage' },
   { label: 'Recent', icon: History, href: '/recent', section: 'Storage' },
-  { label: 'Starred', icon: Star, href: '/starred', section: 'Storage' },
   { label: 'Trash', icon: Trash2, href: '/trash', section: 'Storage' },
   { label: 'Storage metrics', icon: Gauge, href: '/quota', section: 'Manage' },
   { label: 'Activity log', icon: History, href: '/activity', section: 'Manage' },
@@ -117,7 +115,7 @@ function Sidebar({ onNavigate, storage, breakdown }: { onNavigate?: () => void; 
       <div className="flex items-center gap-2 px-4 pb-3 pt-4">
         <Database className="h-5 w-5 text-[color:var(--accent)]" />
         <div>
-          <p className="aws-side-title">9Drive S3</p>
+          <p className="aws-side-title">Equaly S3</p>
         </div>
       </div>
       <div className="h-px w-full bg-[color:var(--border)]" />
@@ -345,15 +343,15 @@ export function DriveLayout() {
   const avatarInitial = (user.name ?? 'U').trim().charAt(0).toUpperCase()
 
   return (
-    <main className="drive-app flex min-h-screen w-full flex-col overflow-x-hidden">
-      {/* ---------- AWS global top navigation ---------- */}
-      <header className="aws-top-nav">
+    <main className="drive-app flex h-screen w-full flex-col overflow-hidden">
+      {/* ---------- AWS global top navigation (fixed) ---------- */}
+      <header className="aws-top-nav shrink-0">
         <button className="aws-nav-btn lg:hidden" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}>
           <Menu className="h-5 w-5" />
         </button>
         <div className="flex items-center gap-2">
           <Database className="h-5 w-5 text-[color:var(--aws-orange)]" />
-          <span className="aws-brand-word">9Drive <span className="aws-brand-badge">S3</span></span>
+          <span className="aws-brand-word">Equaly <span className="aws-brand-badge">S3</span></span>
         </div>
 
         <div className="relative ml-auto w-full max-w-md">
@@ -434,8 +432,8 @@ export function DriveLayout() {
         </div>
       </header>
 
-      {/* ---------- Body: side nav + content ---------- */}
-      <div className="flex min-h-0 w-full flex-1 lg:h-[calc(100vh-48px)] lg:overflow-hidden">
+      {/* ---------- Body: fixed side nav + scrollable content ---------- */}
+      <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <div className="hidden lg:block lg:h-full lg:shrink-0">
           <Sidebar storage={storage} breakdown={breakdown} />
         </div>
@@ -449,7 +447,7 @@ export function DriveLayout() {
           <Sidebar storage={storage} breakdown={breakdown} onNavigate={() => setSidebarOpen(false)} />
         </div>
 
-        <section className="aws-main min-w-0 flex-1 lg:h-full lg:overflow-y-auto">
+        <section className="aws-main min-w-0 flex-1 overflow-y-auto">
           <div className="content-canvas px-4 pt-5 sm:px-6">
             <Outlet context={{ setHeaderActions } satisfies DriveLayoutContext} />
           </div>

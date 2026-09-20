@@ -16,7 +16,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
 
   const contentType = response.headers.get('content-type') ?? ''
   if (!contentType.includes('application/json')) {
-    throw new Error('The API is unavailable. Make sure the 9Drive backend server is running.')
+    throw new Error('The API is unavailable. Make sure the Equaly backend server is running.')
   }
 
   return response.json() as Promise<T>

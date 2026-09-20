@@ -108,8 +108,9 @@ export function ObjectsTable({
             return (
               <tr
                 key={`file-${file.id ?? file.name}`}
-                className={selected ? 'selected' : undefined}
+                className={selected ? 'selected cursor-pointer' : 'cursor-pointer'}
                 draggable
+                onClick={() => onToggleFile(file)}
                 onDragStart={(event) => { event.dataTransfer.setData('text/plain', file.id ?? ''); event.dataTransfer.effectAllowed = 'move' }}
                 onContextMenu={(event) => onFileContextMenu(event, file)}
               >
@@ -126,7 +127,7 @@ export function ObjectsTable({
                 <td>
                   <span className="flex min-w-0 items-center gap-2.5">
                     <FileIcon kind={file.kind} />
-                    <button className="aws-obj-link truncate max-w-[420px]" onClick={() => onOpenFile(file)} title={file.name}>
+                    <button className="aws-obj-link truncate max-w-[420px]" onClick={(event) => { event.stopPropagation(); onOpenFile(file) }} title={file.name}>
                       {file.name}
                     </button>
                   </span>

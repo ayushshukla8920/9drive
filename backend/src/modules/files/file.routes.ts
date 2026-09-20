@@ -7,7 +7,9 @@ import { requireAuth, type AuthRequest } from '../../middleware/auth.middleware.
 import { hashToken, randomToken } from '../../utils/crypto.js'
 import { getAuthedGoogleClient, syncGoogleAppFolderFiles, syncGoogleQuota } from '../google/google.service.js'
 import { deleteS3Object, syncS3Quota, createS3Client, getS3ConfigForAccount } from '../s3/s3.service.js'
-import { streamProviderFile } from './stream-file.js'
+import { streamStoredFile } from './stream-file.js'
+import { deleteChunkObject, getChunkBuffer } from './provider-io.js'
+import { decryptBuffer } from '../../utils/file-crypto.js'
 import { googleDownloadExportMimeTypes, normalizeHeaders, withExtension } from './stream-google-file.js'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { Readable } from 'node:stream'
@@ -26,7 +28,7 @@ fileRouter.get('/preview/:token', async (req, res, next) => {
       include: { file: { include: { connectedAccount: true } } },
     })
     if (!preview || preview.file.status !== 'active') return res.status(404).json({ code: 'PREVIEW_NOT_FOUND', message: 'Preview token not found.' })
-    return streamProviderFile(preview.file, req.headers.range, res, { disposition: 'inline' })
+    return streamStoredFile(preview.file, req.headers.range, res, { disposition: 'inline' })
   } catch (error) {
     return next(error)
   }
@@ -167,20 +169,28 @@ fileRouter.delete('/batch/permanent', async (req: AuthRequest, res, next) => {
       include: { connectedAccount: true }
     })
     const deletedIds: string[] = []
-    const syncedAccountIds = new Set<string>()
+    const accountsToSync = new Map<string, string>() // accountId -> provider
     const failed: Array<{ fileId: string; message: string }> = []
 
     for (const file of files) {
       try {
-        if (file.provider === 's3') {
+        if (file.encrypted) {
+          // Encrypted files are stored as chunks, possibly across several accounts.
+          const chunks = await prisma.fileChunk.findMany({ where: { fileId: file.id }, include: { connectedAccount: true } })
+          for (const chunk of chunks) {
+            await deleteChunkObject(chunk.connectedAccount, chunk.provider, chunk.providerFileId)
+            accountsToSync.set(chunk.connectedAccountId, chunk.provider)
+          }
+        } else if (file.provider === 's3') {
           await deleteS3Object(file)
+          accountsToSync.set(file.connectedAccountId, 's3')
         } else {
           const auth = await getAuthedGoogleClient(file.connectedAccount)
           const drive = google.drive({ version: 'v3', auth })
           await drive.files.delete({ fileId: file.providerFileId })
+          accountsToSync.set(file.connectedAccountId, 'google_drive')
         }
         deletedIds.push(file.id)
-        syncedAccountIds.add(file.connectedAccountId)
         await createAuditLog(req.user!.id, 'PERMANENT_DELETE_FILE', 'file', file.id, { name: file.name })
       } catch (error) {
         failed.push({ fileId: file.id, message: error instanceof Error ? error.message : 'Delete failed' })
@@ -188,14 +198,14 @@ fileRouter.delete('/batch/permanent', async (req: AuthRequest, res, next) => {
     }
 
     if (deletedIds.length > 0) {
+      // FileChunk rows cascade-delete with their File.
       await prisma.file.deleteMany({
         where: { id: { in: deletedIds }, userId: req.user!.id }
       })
     }
 
-    for (const accountId of syncedAccountIds) {
-      const account = files.find((file) => file.connectedAccountId === accountId)?.connectedAccount
-      if (account?.provider === 's3') {
+    for (const [accountId, provider] of accountsToSync) {
+      if (provider === 's3') {
         await syncS3Quota(accountId).catch(() => undefined)
       } else {
         await syncGoogleQuota(accountId).catch(() => undefined)
@@ -305,6 +315,9 @@ fileRouter.post('/:id/public-permission', requireAuth, async (req: AuthRequest, 
   try {
     const fileId = String(req.params.id)
     const file = await prisma.file.findFirstOrThrow({ where: { id: fileId, userId: req.user!.id }, include: { connectedAccount: true } })
+    if (file.encrypted) {
+      return res.status(400).json({ code: 'ENCRYPTED_NO_PUBLIC_LINK', message: 'Encrypted objects cannot be made public. Use download or the API instead.' })
+    }
     if (file.provider !== 'google_drive') {
       return res.status(400).json({ code: 'UNSUPPORTED_PROVIDER', message: 'Only Google Drive files can be made public.' })
     }
@@ -351,6 +364,7 @@ fileRouter.get('/:id/view-url', async (req: AuthRequest, res, next) => {
   try {
     const fileId = String(req.params.id)
     const file = await prisma.file.findFirstOrThrow({ where: { id: fileId, userId: req.user!.id }, include: { connectedAccount: true } })
+    if (file.encrypted) return res.json({ url: null })
     if (file.provider === 's3') return res.json({ url: null })
     const auth = await getAuthedGoogleClient(file.connectedAccount)
     const drive = google.drive({ version: 'v3', auth })
@@ -379,7 +393,7 @@ fileRouter.get('/:id/download', async (req: AuthRequest, res, next) => {
   try {
     const fileId = String(req.params.id)
     const file = await prisma.file.findFirstOrThrow({ where: { id: fileId, userId: req.user!.id }, include: { connectedAccount: true } })
-    return streamProviderFile(file, req.headers.range, res, { disposition: 'attachment' })
+    return streamStoredFile(file, req.headers.range, res, { disposition: 'attachment' })
   } catch (error) {
     return next(error)
   }
@@ -419,6 +433,17 @@ fileRouter.post('/batch-download', async (req: AuthRequest, res, next) => {
       try {
         let stream: Readable
         let fileName = file.name
+        if (file.encrypted) {
+          const chunks = await prisma.fileChunk.findMany({ where: { fileId: file.id }, include: { connectedAccount: true }, orderBy: { chunkIndex: 'asc' } })
+          async function* decryptedChunks() {
+            for (const chunk of chunks) {
+              const cipher = await getChunkBuffer(chunk.connectedAccount, chunk.provider, chunk.providerFileId)
+              yield decryptBuffer(cipher, chunk.iv, chunk.authTag)
+            }
+          }
+          archive.append(Readable.from(decryptedChunks()), { name: fileName })
+          continue
+        }
         if (file.provider === 's3') {
           const config = await getS3ConfigForAccount(file.connectedAccountId)
           const client = createS3Client(config)

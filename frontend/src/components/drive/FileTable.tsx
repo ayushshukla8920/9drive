@@ -1,13 +1,10 @@
 import { FolderOpen, MoreVertical, Star } from 'lucide-react'
-import { type MouseEvent, useState } from 'react'
+import { type MouseEvent } from 'react'
 import { AvatarStack } from '@/components/drive/AvatarStack'
 import { FileIcon } from '@/components/drive/FileIcon'
 import type { FileItem } from '@/data/drive-data'
-import { apiFetch } from '@/lib/api'
 
 export function FileTable({ files, mode = 'default', selectedFileIds = new Set<string>(), allSelected = false, onFileContextMenu, onToggleFile, onToggleAll }: { files: FileItem[]; mode?: 'default' | 'shared' | 'recent' | 'starred' | 'archived'; selectedFileIds?: Set<string>; allSelected?: boolean; onFileContextMenu?: (event: MouseEvent<HTMLElement>, file: FileItem) => void; onToggleFile?: (file: FileItem) => void; onToggleAll?: () => void }) {
-  const [copiedFileId, setCopiedFileId] = useState<string | null>(null)
-
   return (
     <div className="table-shell mt-5 overflow-hidden">
       {/* Mobile card view */}
@@ -92,45 +89,6 @@ export function FileTable({ files, mode = 'default', selectedFileIds = new Set<s
                 <td className="py-2.5 text-slate-500"><span className="flex items-center gap-2"><AvatarStack count={file.shared} />{file.access}</span></td>
                 <td className="py-2.5 text-right">
                   <div className="flex items-center justify-end gap-1.5">
-                    {/* Hover shortcuts */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex gap-1.5">
-                      <button
-                        title="Copy Link"
-                        onClick={async (event) => {
-                          event.stopPropagation()
-                          try {
-                            const data = await apiFetch<{ url: string | null }>(`/files/${file.id}/view-url`)
-                            if (data.url) {
-                              await navigator.clipboard.writeText(data.url)
-                              setCopiedFileId(file.id ?? null)
-                              setTimeout(() => setCopiedFileId(null), 2000)
-                            } else {
-                              const shareData = await apiFetch<{ url: string }>(`/files/${file.id}/share`, { method: 'POST' })
-                              await navigator.clipboard.writeText(shareData.url)
-                              setCopiedFileId(file.id ?? null)
-                              setTimeout(() => setCopiedFileId(null), 2000)
-                            }
-                          } catch { /* ignore */ }
-                        }}
-                        className={
-                          copiedFileId === file.id
-                            ? "inline-flex h-7 px-2 items-center justify-center rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all scale-95"
-                            : "inline-flex h-7 px-2 items-center justify-center rounded-lg text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
-                        }
-                      >
-                        {copiedFileId === file.id ? 'Copied!' : 'Copy Link'}
-                      </button>
-                      <button
-                        title="Move File"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          window.dispatchEvent(new CustomEvent('9drive:open-move-modal', { detail: file }))
-                        }}
-                        className="inline-flex h-7 px-2 items-center justify-center rounded-lg text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
-                      >
-                        Move
-                      </button>
-                    </div>
                     <button className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 shrink-0" onClick={(event) => { event.stopPropagation(); onFileContextMenu?.(event, file) }} aria-label={`Open ${file.name} menu`}><MoreVertical className="h-4 w-4" /></button>
                   </div>
                 </td>
