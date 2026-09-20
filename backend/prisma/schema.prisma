@@ -15,8 +15,6 @@ model User {
   status         String             @default("active") @db.VarChar(32)
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
-  sessions       UserSession[]
-  authHandoffs   AuthHandoff[]
   providerConfigs ProviderConfig[]
   oauthStates    OauthState[]
   connectedAccounts ConnectedAccount[]
@@ -67,35 +65,6 @@ model UploadRoutingPolicy {
   @@map("upload_routing_policies")
 }
 
-model UserSession {
-  id               String    @id @default(uuid()) @db.Char(36)
-  userId           String    @map("user_id") @db.Char(36)
-  refreshTokenHash String    @map("refresh_token_hash") @db.VarChar(255)
-  userAgent        String?   @map("user_agent") @db.Text
-  ipAddress        String?   @map("ip_address") @db.VarChar(64)
-  expiresAt        DateTime  @map("expires_at")
-  revokedAt        DateTime? @map("revoked_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([refreshTokenHash])
-  @@map("user_sessions")
-}
-
-model AuthHandoff {
-  id        String    @id @default(uuid()) @db.Char(36)
-  userId    String    @map("user_id") @db.Char(36)
-  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
-  expiresAt DateTime  @map("expires_at")
-  usedAt    DateTime? @map("used_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("auth_handoffs")
-}
 
 model ProviderConfig {
   id                    String             @id @default(uuid()) @db.Char(36)

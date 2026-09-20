@@ -1,0 +1,14 @@
+{
+  "name": "9drive",
+  "private": true,
+  "scripts": {
+    "install:apps": "npm --prefix backend install && npm --prefix frontend install",
+    "db:generate": "npm --prefix backend run prisma:generate",
+    "db:migrate": "npm --prefix backend run db:migrate:deploy",
+    "google:seed": "npm --prefix backend run seed:google-config",
+    "build": "npm --prefix frontend run build && npm --prefix backend run build",
+    "dev": "node server.mjs --dev",
+    "start": "node server.mjs",
+    "deploy": "npm run db:generate && npm run db:migrate && npm run google:seed && npm run build"
+  }
+}

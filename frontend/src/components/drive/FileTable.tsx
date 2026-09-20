@@ -9,7 +9,7 @@ export function FileTable({ files, mode = 'default', selectedFileIds = new Set<s
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null)
 
   return (
-    <div className="mt-4">
+    <div className="table-shell mt-5 overflow-hidden">
       {/* Mobile card view */}
       <div className="grid gap-2.5 sm:hidden">
         {onToggleAll ? (
@@ -44,27 +44,27 @@ export function FileTable({ files, mode = 'default', selectedFileIds = new Set<s
 
       {/* Desktop table view */}
       <div className="hidden overflow-x-auto sm:block">
-        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+        <table className="aws-table min-w-[760px]">
           <thead>
-            <tr className="border-b border-slate-200/20 text-slate-950">
-              <th className="w-9 py-2.5"><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={allSelected} onChange={onToggleAll} /></th>
-              <th className="py-2.5 font-extrabold">Name</th>
-              {mode === 'default' ? <th className="py-2.5 font-extrabold text-slate-500 font-semibold">Folder</th> : null}
-              {mode === 'shared' ? <th className="py-2.5 font-extrabold">Owner</th> : null}
-              {mode === 'recent' ? <th className="py-2.5 font-extrabold">Last Opened</th> : null}
-              {mode === 'starred' ? <th className="py-2.5 font-extrabold">Starred On</th> : null}
-              {mode === 'archived' ? <th className="py-2.5 font-extrabold">Archived Date</th> : null}
-              {mode === 'archived' ? <th className="py-2.5 font-extrabold">Original Location</th> : <th className="py-2.5 font-extrabold">Last Modified</th>}
-              <th className="py-2.5 font-extrabold">Size</th>
-              <th className="py-2.5 font-extrabold">Access</th>
-              <th className="py-2.5" />
+            <tr>
+              <th className="w-9"><input type="checkbox" className="aws-check" checked={allSelected} onChange={onToggleAll} /></th>
+              <th>Name</th>
+              {mode === 'default' ? <th>Folder</th> : null}
+              {mode === 'shared' ? <th>Owner</th> : null}
+              {mode === 'recent' ? <th>Last Opened</th> : null}
+              {mode === 'starred' ? <th>Starred On</th> : null}
+              {mode === 'archived' ? <th>Archived Date</th> : null}
+              {mode === 'archived' ? <th>Original Location</th> : <th>Last Modified</th>}
+              <th>Size</th>
+              <th>Access</th>
+              <th className="w-10" />
             </tr>
           </thead>
           <tbody>
             {files.map((file) => (
-              <tr key={file.id ?? file.name} draggable onDragStart={(event) => { event.dataTransfer.setData('text/plain', file.id ?? ''); event.dataTransfer.effectAllowed = 'move' }} onContextMenu={(event) => onFileContextMenu?.(event, file)} onClick={() => onToggleFile?.(file)} className={selectedFileIds.has(file.id ?? '') ? 'group border-b file-selected transition hover:bg-orange-500/15 cursor-grab active:cursor-grabbing' : 'group border-b border-slate-200/10 transition hover:bg-slate-100 cursor-grab active:cursor-grabbing'}>
-                <td className="py-2.5"><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={selectedFileIds.has(file.id ?? '')} onChange={() => onToggleFile?.(file)} onClick={(event) => event.stopPropagation()} /></td>
-                <td className="py-2.5 font-semibold">
+              <tr key={file.id ?? file.name} draggable onDragStart={(event) => { event.dataTransfer.setData('text/plain', file.id ?? ''); event.dataTransfer.effectAllowed = 'move' }} onContextMenu={(event) => onFileContextMenu?.(event, file)} onClick={() => onToggleFile?.(file)} className={selectedFileIds.has(file.id ?? '') ? 'group selected cursor-grab active:cursor-grabbing' : 'group cursor-grab active:cursor-grabbing'}>
+                <td><input type="checkbox" className="aws-check" checked={selectedFileIds.has(file.id ?? '')} onChange={() => onToggleFile?.(file)} onClick={(event) => event.stopPropagation()} /></td>
+                <td className="font-medium">
                   <span className="flex min-w-0 items-center gap-2.5">
                     {mode === 'starred' ? <Star className="h-4 w-4 shrink-0 fill-yellow-400 text-yellow-400" /> : <FileIcon kind={file.kind} />}
                     <span className="truncate max-w-[200px] lg:max-w-[280px]" title={file.name}>{file.name}</span>

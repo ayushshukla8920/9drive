@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { API_URL, apiFetch } from '@/lib/api'
-import { getAccessToken } from '@/lib/auth'
 
 export type UploadProgressStatus = 'uploading' | 'done' | 'error' | 'partial'
 export type UploadProgressFile = { name: string; size: number; percent: number; status: UploadProgressStatus }
@@ -70,11 +69,10 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       const endOffset = Math.min(startOffset + CHUNK_SIZE, file.size)
       const chunk = file.slice(startOffset, endOffset)
 
-      // We use raw fetch with authorization header for binary stream upload
+      // Raw fetch is used here because chunks are sent as a binary stream.
       const response = await fetch(`${API_URL}/uploads/resumable/chunk/${sessionId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${getAccessToken()}`,
           'Content-Range': `bytes ${startOffset}-${endOffset - 1}/${file.size}`,
           'Content-Length': String(chunk.size)
         },

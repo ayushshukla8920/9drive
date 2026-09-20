@@ -6,7 +6,6 @@ import { DummyModal } from '@/components/drive/DummyModal'
 import { PageHeader } from '@/components/drive/PageHeader'
 import { apiFetch, formatBytes, API_URL } from '@/lib/api'
 import { getGravatarUrl } from '@/lib/gravatar'
-import { getStoredUser, getAccessToken, clearAuthSession } from '@/lib/auth'
 
 type ConnectedAccount = { id: string; provider: string; email: string; displayName?: string | null; status: string; storageAccount?: { totalBytes: string | null; usedBytes: string; availableBytes: string | null; lastSyncedAt: string | null } | null }
 
@@ -26,7 +25,7 @@ function availableLabel(account: ConnectedAccount) {
 }
 
 export function SettingsPage() {
-  const user = getStoredUser()
+  const user = { name: 'Shared workspace', email: 'Cloudflare Access' }
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
   const [message, setMessage] = useState('')
   const [connecting, setConnecting] = useState(false)
@@ -70,12 +69,7 @@ export function SettingsPage() {
   async function downloadBackup() {
     setDownloadingBackup(true)
     try {
-      const token = getAccessToken()
-      const response = await fetch(`${API_URL}/system/backup`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await fetch(`${API_URL}/system/backup`)
       if (!response.ok) {
         throw new Error('Failed to retrieve database backup.')
       }
@@ -114,15 +108,11 @@ export function SettingsPage() {
     setRestoreSuccess(false)
 
     try {
-      const token = getAccessToken()
       const formData = new FormData()
       formData.append('file', restoreFile)
 
       const response = await fetch(`${API_URL}/system/restore`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         body: formData
       })
 
@@ -132,11 +122,10 @@ export function SettingsPage() {
       }
 
       setRestoreSuccess(true)
-      setRestoreMessage(data.message || 'Database restored successfully! Logging you out and reloading...')
+      setRestoreMessage(data.message || 'Database restored successfully! Reloading...')
 
       setTimeout(() => {
-        clearAuthSession()
-        window.location.href = '/login'
+        window.location.reload()
       }, 4000)
 
     } catch (err: any) {

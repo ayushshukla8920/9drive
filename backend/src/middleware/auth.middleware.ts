@@ -1,21 +1,27 @@
 import type { NextFunction, Request, Response } from 'express'
 import { prisma } from '../config/prisma.js'
-import { verifyAccessToken } from '../utils/jwt.js'
 
 export type AuthRequest = Request & {
   user?: { id: string; sessionId: string }
 }
 
-export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
+const workspaceEmail = 'workspace@9drive.local'
+
+/**
+ * Cloudflare Access is the only admission layer for this deployment. The
+ * database record below is an internal workspace owner used to retain the
+ * existing ownership relationships for storage data; it is not a login user.
+ */
+export async function requireAuth(req: AuthRequest, _res: Response, next: NextFunction) {
   try {
-    const header = req.header('Authorization')
-    if (!header?.startsWith('Bearer ')) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Bearer token required.' })
-    const payload = verifyAccessToken(header.slice(7))
-    const session = await prisma.userSession.findUnique({ where: { id: payload.sid } })
-    if (!session || session.revokedAt || session.expiresAt < new Date()) return res.status(401).json({ code: 'AUTH_SESSION_EXPIRED', message: 'Session expired.' })
-    req.user = { id: payload.sub, sessionId: payload.sid }
+    const workspace = await prisma.user.upsert({
+      where: { email: workspaceEmail },
+      create: { name: '9Drive workspace', email: workspaceEmail, passwordHash: 'cloudflare-access-managed' },
+      update: {},
+    })
+    req.user = { id: workspace.id, sessionId: 'cloudflare-access' }
     return next()
-  } catch {
-    return res.status(401).json({ code: 'AUTH_INVALID_TOKEN', message: 'Invalid token.' })
+  } catch (error) {
+    return next(error)
   }
 }

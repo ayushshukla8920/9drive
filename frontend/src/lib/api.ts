@@ -1,43 +1,22 @@
-import { clearAuthSession, getAccessToken, getRefreshToken, setAccessToken } from '@/lib/auth'
-
-const isProd = import.meta.env.PROD
-const rawApiUrl = import.meta.env.VITE_API_URL
-export const API_URL = (rawApiUrl && rawApiUrl !== 'http://localhost:4000')
-  ? rawApiUrl
-  : (isProd ? '/api' : 'http://localhost:4000')
+export const API_URL = typeof window === 'undefined' ? '' : window.location.origin
 
 
-type ApiOptions = RequestInit & { skipAuth?: boolean; retry?: boolean }
-
-async function refreshAccessToken() {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return false
-  const response = await fetch(`${API_URL}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  })
-  if (!response.ok) return false
-  const data = await response.json() as { accessToken: string }
-  setAccessToken(data.accessToken)
-  return true
-}
+type ApiOptions = RequestInit & { skipAuth?: boolean }
 
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const headers = new Headers(options.headers)
-  const token = getAccessToken()
-  if (!options.skipAuth && token) headers.set('Authorization', `Bearer ${token}`)
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers })
-  if (response.status === 401 && options.retry !== false && !options.skipAuth && await refreshAccessToken()) {
-    return apiFetch<T>(path, { ...options, retry: false })
-  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }))
-    if (response.status === 401) clearAuthSession()
     throw new Error(error.message ?? 'Request failed')
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.includes('application/json')) {
+    throw new Error('The API is unavailable. Make sure the 9Drive backend server is running.')
   }
 
   return response.json() as Promise<T>

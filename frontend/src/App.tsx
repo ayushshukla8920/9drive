@@ -1,14 +1,10 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { DriveLayout } from '@/layouts/DriveLayout'
 import { AllFilesPage } from '@/pages/AllFilesPage'
 import { ArchivedPage } from '@/pages/ArchivedPage'
-import { LoginPage } from '@/pages/LoginPage'
-import { GoogleAuthPage } from '@/pages/GoogleAuthPage'
 import { GoogleConnectedPage } from '@/pages/GoogleConnectedPage'
 import { QuotaTrackerPage } from '@/pages/QuotaTrackerPage'
 import { RecentPage } from '@/pages/RecentPage'
-import { RegisterPage } from '@/pages/RegisterPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SharedPage } from '@/pages/SharedPage'
 import { StarredPage } from '@/pages/StarredPage'
@@ -21,15 +17,12 @@ import { UploadProvider } from '@/context/UploadContext'
 
 function App() {
   return (
-    <UploadProvider>
-      <Routes>
-      <Route path="login" element={<LoginPage />} />
-      <Route path="register" element={<RegisterPage />} />
-      <Route path="google-auth" element={<GoogleAuthPage />} />
-      <Route path="google-connected" element={<GoogleConnectedPage />} />
-      <Route path="public/files/:token" element={<PublicFilePage />} />
-      <Route path="public/files/:token/embed" element={<PublicFilePage embed />} />
-      <Route element={<ProtectedRoute />}>
+    <BrowserRouter>
+      <UploadProvider>
+        <Routes>
+          <Route path="google-connected" element={<GoogleConnectedPage />} />
+          <Route path="public/files/:token" element={<PublicFilePage />} />
+          <Route path="public/files/:token/embed" element={<PublicFilePage embed />} />
         <Route element={<DriveLayout />}>
           <Route index element={<Navigate to="/all-files" replace />} />
           <Route path="all-files" element={<AllFilesPage />} />
@@ -43,10 +36,10 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="api" element={<ApiManagementPage />} />
         </Route>
-      </Route>
-      <Route path="*" element={<Navigate to="/all-files" replace />} />
-      </Routes>
-    </UploadProvider>
+          <Route path="*" element={<Navigate to="/all-files" replace />} />
+        </Routes>
+      </UploadProvider>
+    </BrowserRouter>
   )
 }
 
